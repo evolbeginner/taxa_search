@@ -72,7 +72,7 @@ use File::Basename;
 use 5.010;
 
 
-my ($search_id_href, $db_file, $fuzzy, $case, $rank_swi, $rank_select_href, $concise, $Bio_DB_Taxonomy_swi);
+my ($search_id_href, $is_tax_id, $db_file, $fuzzy, $case, $rank_swi, $rank_select_href, $concise, $Bio_DB_Taxonomy_swi);
 my ($db, %key_order, %lineage, $focus);
 my @key_order = qw(species genus family order class phylum kingdom superkingdom);
 my %legal_fuzzy_way = (
@@ -96,7 +96,11 @@ my $dbh = DBI->connect("dbi:SQLite:dbname=$db_file","","",{AutoCommit => 0});
 $dbh->commit();
 
 foreach my $search_id (keys %{$search_id_href}){
-	&get_taxid('', '', $search_id, '');
+    if (defined $is_tax_id){
+        &get_taxid('', $search_id, '', '');
+    }else{
+	    &get_taxid('', '', $search_id, '');
+    }
 	if (not exists $lineage{$search_id}){
 		&look_for_syn($search_id);
 	}
@@ -127,7 +131,6 @@ sub look_for_Bio_DB_Taxonomy{
 		#print OUT $node->scientific_name . "\n";
 		#print $node->scientific_name ."\n";
 		my $parent = $db->get_Taxonomy_Node($node->parent_id);
-		# print $parent->node_name, "\t";
 		while (defined $parent and $parent->node_name ne 'root'){
 			my $rank = $parent->rank;
 			if (exists $key_order{$rank}){
@@ -188,7 +191,7 @@ sub look_for_syn{
 sub output{
 	#foreach my $key1 (keys %$search_id_href){
 	if (not $fuzzy and not $case){
-		map {print join("\t", $_, "NotFound!\n")} grep {not exists $lineage{$_}} keys %$search_id_href;
+		map {print join("\t", $_, "Not Found!\n")} grep {not exists $lineage{$_}} keys %$search_id_href;
 		}
 	for my $key1 (keys %lineage){
 		if (not $rank_swi){
@@ -315,7 +318,8 @@ my (%search_id, $db_file, $fuzzy, $case, $rank_swi, %rank_select, $concise, $Bio
 while(@_){
 	$_ = shift;
 	given ($_){
-		when(/-?-taxa/)		{$search_id{shift()}=1}
+		when(/-?-taxa/)     {$search_id{shift()}=1}
+		when(/-?-tax(a)?_id/)       {$search_id{shift()}=1; $is_tax_id = 'true'}
 		when(/-?-db_file/)	{$db_file=shift}
 		when(/-?-rank/)		{$rank_swi=1;
                              #my @ranks = shift().split(",");
